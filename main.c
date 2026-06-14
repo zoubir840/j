@@ -1,14 +1,19 @@
 #include <furi.h>
-#include <furi_hal.h>
 #include <gui/gui.h>
-#include <storage/storage.h> // API pour la SD
+#include <input/input.h>
+#include <storage/storage.h>
 
 typedef struct {
     uint32_t count;
     int16_t rssi;
 } AppState;
 
-// Sauvegarde dans /ext/subghz_logs.txt
+// Fonction de pontage pour le callback d'entrée
+static void input_callback(InputEvent* event, void* context) {
+    FuriMessageQueue* queue = context;
+    furi_message_queue_put(queue, event, 0);
+}
+
 static void save_to_sd(uint32_t count, int16_t rssi) {
     Storage* storage = furi_record_open(RECORD_STORAGE);
     File* file = storage_file_alloc(storage);
@@ -22,7 +27,6 @@ static void save_to_sd(uint32_t count, int16_t rssi) {
     furi_record_close(RECORD_STORAGE);
 }
 
-// Interface simplifiée pour stabilité maximale
 static void draw_callback(Canvas* canvas, void* ctx) {
     AppState* state = ctx;
     canvas_clear(canvas);
@@ -32,7 +36,7 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     char buf[32];
     snprintf(buf, 32, "RSSI: %d | Total: %lu", state->rssi, state->count);
     canvas_draw_str(canvas, 0, 30, buf);
-    canvas_draw_str(canvas, 0, 50, "[OK] Sauvegarder | [BACK] Sortir");
+    canvas_draw_str(canvas, 0, 50, "[OK] Sauvegarder");
 }
 
 int32_t subghz_advanced_main(void* p) {
@@ -43,16 +47,17 @@ int32_t subghz_advanced_main(void* p) {
     FuriMessageQueue* queue = furi_message_queue_alloc(8, sizeof(InputEvent));
     ViewPort* view_port = view_port_alloc();
     view_port_draw_callback_set(view_port, draw_callback, state);
-    view_port_input_callback_set(view_port, (InputCallback)furi_message_queue_put, queue);
+    // On utilise maintenant notre fonction "input_callback" dédiée
+    view_port_input_callback_set(view_port, input_callback, queue);
     
     Gui* gui = furi_record_open(RECORD_GUI);
     gui_add_view_port(gui, view_port, GuiLayerFullscreen);
 
     InputEvent event;
     while(furi_message_queue_get(queue, &event, 100) != FuriStatusErrorTimeout || true) {
-        if(event.type == InputTypeShort && event.key == InputKeyBack) break;
-        if(event.type == InputTypeShort && event.key == InputKeyOk) {
-            save_to_sd(state->count, state->rssi);
+        if(event.type == InputTypeShort) {
+            if(event.key == InputKeyBack) break;
+            if(event.key == InputKeyOk) save_to_sd(state->count, state->rssi);
         }
         state->rssi = (int16_t)furi_hal_subghz_get_rssi();
         view_port_update(view_port);
