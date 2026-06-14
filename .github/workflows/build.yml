@@ -28,23 +28,24 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Copy specific app files to firmware structure
+      - name: Copy app files
         run: |
           mkdir -p flipper-firmware/applications_user/subghz_advanced
-          # On ne copie que les fichiers utiles pour le compilateur
           cp user_app/main.c flipper-firmware/applications_user/subghz_advanced/ 2>/dev/null || cp user_app/subghz_advanced/main.c flipper-firmware/applications_user/subghz_advanced/
           cp user_app/application.fam flipper-firmware/applications_user/subghz_advanced/ 2>/dev/null || cp user_app/subghz_advanced/application.fam flipper-firmware/applications_user/subghz_advanced/
 
-      - name: Set up Environment & Build FAP
+      - name: Build FAP
         run: |
           cd flipper-firmware
-          # Initialise l'environnement virtuel python nécessaire à fbt
-          ./fbt env
-          # Lance la compilation
           ./fbt fap_subghz_advanced
 
-      - name: Upload Compiled FAP Artifact
+      - name: Find and Upload FAP
+        run: |
+          # Recherche le fichier .fap peu importe le chemin exact dans le dossier build
+          find flipper-firmware/build -name "subghz_advanced.fap" -exec cp {} . \;
+          
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: subghz_advanced_fap
-          path: flipper-firmware/build/f7-firmware-*/apps/subghz_advanced.fap
+          path: subghz_advanced.fap
