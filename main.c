@@ -2,13 +2,13 @@
 #include <gui/gui.h>
 #include <input/input.h>
 #include <storage/storage.h>
+#include <lib/subghz/receiver.h> // API standard pour recevoir les données
 
 typedef struct {
     uint32_t count;
     int16_t rssi;
 } AppState;
 
-// Fonction de pontage pour le callback d'entrée
 static void input_callback(InputEvent* event, void* context) {
     FuriMessageQueue* queue = context;
     furi_message_queue_put(queue, event, 0);
@@ -36,18 +36,21 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     char buf[32];
     snprintf(buf, 32, "RSSI: %d | Total: %lu", state->rssi, state->count);
     canvas_draw_str(canvas, 0, 30, buf);
-    canvas_draw_str(canvas, 0, 50, "[OK] Sauvegarder");
+    canvas_draw_str(canvas, 0, 50, "[OK] Sauvegarder | [BACK] Sortir");
 }
 
 int32_t subghz_advanced_main(void* p) {
     UNUSED(p);
     AppState* state = malloc(sizeof(AppState));
     state->count = 0;
+    state->rssi = 0;
+
+    // Initialisation du récepteur SubGhz officiel
+    SubGhzReceiver* receiver = subghz_receiver_alloc_init(SubGhzEnvironmentTypeExternal);
     
     FuriMessageQueue* queue = furi_message_queue_alloc(8, sizeof(InputEvent));
     ViewPort* view_port = view_port_alloc();
     view_port_draw_callback_set(view_port, draw_callback, state);
-    // On utilise maintenant notre fonction "input_callback" dédiée
     view_port_input_callback_set(view_port, input_callback, queue);
     
     Gui* gui = furi_record_open(RECORD_GUI);
@@ -59,10 +62,13 @@ int32_t subghz_advanced_main(void* p) {
             if(event.key == InputKeyBack) break;
             if(event.key == InputKeyOk) save_to_sd(state->count, state->rssi);
         }
-        state->rssi = (int16_t)furi_hal_subghz_get_rssi();
+        
+        // Lecture via le récepteur initialisé
+        state->rssi = (int16_t)subghz_receiver_get_rssi(receiver);
         view_port_update(view_port);
     }
 
+    subghz_receiver_free(receiver);
     gui_remove_view_port(gui, view_port);
     view_port_free(view_port);
     furi_record_close(RECORD_GUI);
