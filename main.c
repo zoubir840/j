@@ -19,7 +19,6 @@ static void draw_callback(Canvas* canvas, void* ctx) {
     canvas_draw_str(canvas, 0, 30, buf);
     snprintf(buf, 32, "Captures: %lu", state->count);
     canvas_draw_str(canvas, 0, 42, buf);
-    canvas_draw_str(canvas, 0, 60, "[OK] Save  [BACK] Exit");
 }
 
 static void input_callback(InputEvent* event, void* context) {
@@ -45,19 +44,19 @@ int32_t subghz_advanced_main(void* p) {
             if(event.key == InputKeyBack) break;
             if(event.key == InputKeyOk) {
                 state->count++;
-                // Sauvegarde simple
                 Storage* s = furi_record_open(RECORD_STORAGE);
                 File* f = storage_file_alloc(s);
                 if(storage_file_open(f, "/ext/logs.txt", FSAM_WRITE, FSOM_OPEN_APPEND)) {
-                    storage_file_printf(f, "Detection: %d\n", state->rssi);
+                    FuriString* str = furi_string_alloc();
+                    furi_string_printf(str, "Detection: %d\n", state->rssi);
+                    storage_file_write(f, (uint8_t*)furi_string_get_cstr(str), furi_string_size(str));
+                    furi_string_free(str);
                 }
                 storage_file_close(f); storage_file_free(f);
                 furi_record_close(RECORD_STORAGE);
             }
         }
-        // Simulation/Lecture RSSI simplifiée pour éviter les dépendances complexes
-        // Sur Unleashed, ceci fonctionnera sans erreur de linker
-        state->rssi = -65; 
+        state->rssi = -65; // Valeur simulée
         view_port_update(view_port);
     }
 
