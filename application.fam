@@ -1,0 +1,11 @@
+App(
+    appid="subghz_advanced",
+    name="SubGhz AI Analyzer",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="subghz_advanced_main",
+    requires=["gui"],
+    stack_size=2 * 1024,
+    order=20,
+    fap_category="Sub-GHz",
+    fap_icon="subghz_icon.png",
+)
