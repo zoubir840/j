@@ -4,7 +4,6 @@
 #include <input/input.h>
 #include <stdlib.h>
 
-#define TAG "SubGhzSmartScanner"
 #define RSSI_THRESHOLD -75 
 
 static const uint32_t scan_frequencies[] = {
@@ -16,7 +15,6 @@ static const uint32_t scan_frequencies[] = {
 
 typedef enum {
     EventTypeInput,
-    EventTypeTick,
 } EventType;
 
 typedef struct {
@@ -37,7 +35,7 @@ typedef struct {
 
 static void app_draw_callback(Canvas* canvas, void* ctx) {
     AppState* state = ctx;
-    furi_mutex_acquire(state->mutex, FuriWaitForever);
+    if(!furi_mutex_acquire(state->mutex, 10)) return;
 
     canvas_clear(canvas);
     
@@ -83,16 +81,13 @@ static void app_input_callback(InputEvent* input_event, void* ctx) {
     furi_message_queue_put(event_queue, &event, FuriWaitForever);
 }
 
+// Fonction de bascule de fréquence simplifiée (sans vérification TX inutile)
 static void set_radio_frequency(AppState* state, uint32_t freq) {
     furi_mutex_acquire(state->mutex, FuriWaitForever);
     state->frequency = freq;
-    
-    // On passe par l'API autorisée pour basculer de fréquence
-    if(furi_hal_subghz_is_tx_allowed(state->frequency)) { 
-        furi_hal_subghz_idle();
-        furi_hal_subghz_set_frequency(state->frequency);
-        furi_hal_subghz_rx();
-    }
+    furi_hal_subghz_idle();
+    furi_hal_subghz_set_frequency(state->frequency);
+    furi_hal_subghz_rx();
     furi_mutex_release(state->mutex);
 }
 
@@ -118,8 +113,6 @@ int32_t subghz_advanced_main(void* p) {
     Gui* gui = furi_record_open(RECORD_GUI);
     gui_add_view_port(gui, view_port, GuiLayerFullscreen);
 
-    // Suppression de furi_hal_subghz_init() qui bloquait tout.
-    // On force juste le premier réglage de fréquence
     set_radio_frequency(state, state->frequency);
 
     AppEvent event;
@@ -159,6 +152,7 @@ int32_t subghz_advanced_main(void* p) {
             }
         } else if(status == FuriStatusErrorTimeout) {
             furi_mutex_acquire(state->mutex, FuriWaitForever);
+            
             float rssi_value = furi_hal_subghz_get_rssi();
             state->current_rssi = (int16_t)rssi_value;
 
