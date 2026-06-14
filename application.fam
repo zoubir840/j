@@ -7,5 +7,4 @@ App(
     stack_size=2 * 1024,
     order=20,
     fap_category="Sub-GHz",
-    fap_icon="subghz_icon.png",
 )
