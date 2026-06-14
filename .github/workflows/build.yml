@@ -5,24 +5,36 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Permet de lancer la compilation manuellement
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout user application
         uses: actions/checkout@v4
+        path: user_app
 
-      - name: Build FAP with FBT Action
-        uses: flipperdevices/fbt-action@v1
+      - name: Checkout Flipper Zero Firmware
+        uses: actions/checkout@v4
         with:
-          app-dir: subghz_advanced
-          # Tu peux spécifier la branche du firmware cible ici (ex: release, dev, ou un fork comme momentum)
-          sdk-channel: release 
+          repository: flipperdevices/flipperzero-firmware
+          ref: release # Tu peux remplacer par 'dev' ou utiliser le repo d'un autre firmware (ex: RogueMaster/flipperzero-firmware-wip)
+          path: flipper-firmware
+          submodules: recursive
 
-      - name: Upload Compiled FAP
+      - name: Copy app into firmware structure
+        run: |
+          mkdir -p flipper-firmware/applications_user/subghz_advanced
+          cp -r user_app/* flipper-firmware/applications_user/subghz_advanced/
+
+      - name: Set up Environment & Build FAP
+        run: |
+          cd flipper-firmware
+          ./fbt fap_subghz_advanced
+
+      - name: Upload Compiled FAP Artifact
         uses: actions/upload-artifact@v4
         with:
           name: subghz_advanced_fap
-          path: subghz_advanced/*.fap
+          path: flipper-firmware/build/f7-firmware-*/apps/subghz_advanced.fap
