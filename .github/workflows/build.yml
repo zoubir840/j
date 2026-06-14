@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,15 +26,21 @@ jobs:
           ref: release
           path: flipper-firmware
           submodules: recursive
+          fetch-depth: 0
 
-      - name: Copy app into firmware structure
+      - name: Copy specific app files to firmware structure
         run: |
           mkdir -p flipper-firmware/applications_user/subghz_advanced
-          cp -r user_app/* flipper-firmware/applications_user/subghz_advanced/
+          # On ne copie que les fichiers utiles pour le compilateur
+          cp user_app/main.c flipper-firmware/applications_user/subghz_advanced/ 2>/dev/null || cp user_app/subghz_advanced/main.c flipper-firmware/applications_user/subghz_advanced/
+          cp user_app/application.fam flipper-firmware/applications_user/subghz_advanced/ 2>/dev/null || cp user_app/subghz_advanced/application.fam flipper-firmware/applications_user/subghz_advanced/
 
       - name: Set up Environment & Build FAP
         run: |
           cd flipper-firmware
+          # Initialise l'environnement virtuel python nécessaire à fbt
+          ./fbt env
+          # Lance la compilation
           ./fbt fap_subghz_advanced
 
       - name: Upload Compiled FAP Artifact
