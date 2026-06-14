@@ -13,13 +13,14 @@ jobs:
     steps:
       - name: Checkout user application
         uses: actions/checkout@v4
-        path: user_app
+        with:
+          path: user_app
 
       - name: Checkout Flipper Zero Firmware
         uses: actions/checkout@v4
         with:
           repository: flipperdevices/flipperzero-firmware
-          ref: release # Tu peux remplacer par 'dev' ou utiliser le repo d'un autre firmware (ex: RogueMaster/flipperzero-firmware-wip)
+          ref: release
           path: flipper-firmware
           submodules: recursive
 
