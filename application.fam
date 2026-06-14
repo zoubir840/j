@@ -1,9 +1,9 @@
 App(
-    appid="subghz_advanced",
-    name="SubGhz Unleashed",
+    appid="subghz_pro",
+    name="SubGhz Pro Ultimate",
     apptype=FlipperAppType.EXTERNAL,
-    entry_point="subghz_advanced_main",
-    requires=["gui", "storage"], # On retire subghz pour éviter l'erreur de linker
-    stack_size=4 * 1024,
+    entry_point="subghz_pro_app",
+    requires=["gui", "storage", "notification"],
+    stack_size=8 * 1024,
     fap_category="Tools",
 )

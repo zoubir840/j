@@ -1,69 +1,36 @@
 #include <furi.h>
 #include <gui/gui.h>
-#include <input/input.h>
-#include <storage/storage.h>
+#include <gui/view_dispatcher.h>
+#include <gui/modules/widget.h>
 
 typedef struct {
-    int16_t rssi;
-    uint32_t count;
-} AppState;
+    ViewDispatcher* view_dispatcher;
+    Widget* widget;
+} AppContext;
 
 static void draw_callback(Canvas* canvas, void* ctx) {
-    AppState* state = ctx;
     canvas_clear(canvas);
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 0, 10, "UNLEASHED SCANNER");
+    canvas_draw_str(canvas, 0, 10, "ULTIMATE SCANNER");
     canvas_set_font(canvas, FontSecondary);
-    char buf[32];
-    snprintf(buf, 32, "RSSI: %d dBm", state->rssi);
-    canvas_draw_str(canvas, 0, 30, buf);
-    snprintf(buf, 32, "Captures: %lu", state->count);
-    canvas_draw_str(canvas, 0, 42, buf);
+    canvas_draw_str(canvas, 0, 30, "Systeme pret...");
+    canvas_draw_str(canvas, 0, 50, "En attente de signal...");
 }
 
-static void input_callback(InputEvent* event, void* context) {
-    furi_message_queue_put(context, event, 0);
-}
-
-int32_t subghz_advanced_main(void* p) {
+int32_t subghz_pro_app(void* p) {
     UNUSED(p);
-    AppState* state = malloc(sizeof(AppState));
-    state->count = 0;
+    AppContext* ctx = malloc(sizeof(AppContext));
+    ctx->view_dispatcher = view_dispatcher_alloc();
+    ctx->widget = widget_alloc();
     
-    FuriMessageQueue* queue = furi_message_queue_alloc(8, sizeof(InputEvent));
-    ViewPort* view_port = view_port_alloc();
-    view_port_draw_callback_set(view_port, draw_callback, state);
-    view_port_input_callback_set(view_port, input_callback, queue);
+    widget_set_draw_callback(ctx->widget, draw_callback, NULL);
+    view_dispatcher_add_view(ctx->view_dispatcher, 0, widget_get_view(ctx->widget));
+    view_dispatcher_attach_to_gui(ctx->view_dispatcher, furi_record_open(RECORD_GUI), ViewDispatcherTypeFullscreen);
     
-    Gui* gui = furi_record_open(RECORD_GUI);
-    gui_add_view_port(gui, view_port, GuiLayerFullscreen);
-
-    InputEvent event;
-    while(furi_message_queue_get(queue, &event, 100) != FuriStatusErrorTimeout || true) {
-        if(event.type == InputTypeShort) {
-            if(event.key == InputKeyBack) break;
-            if(event.key == InputKeyOk) {
-                state->count++;
-                Storage* s = furi_record_open(RECORD_STORAGE);
-                File* f = storage_file_alloc(s);
-                if(storage_file_open(f, "/ext/logs.txt", FSAM_WRITE, FSOM_OPEN_APPEND)) {
-                    FuriString* str = furi_string_alloc();
-                    furi_string_printf(str, "Detection: %d\n", state->rssi);
-                    storage_file_write(f, (uint8_t*)furi_string_get_cstr(str), furi_string_size(str));
-                    furi_string_free(str);
-                }
-                storage_file_close(f); storage_file_free(f);
-                furi_record_close(RECORD_STORAGE);
-            }
-        }
-        state->rssi = -65; // Valeur simulée
-        view_port_update(view_port);
-    }
-
-    gui_remove_view_port(gui, view_port);
-    view_port_free(view_port);
-    furi_record_close(RECORD_GUI);
-    furi_message_queue_free(queue);
-    free(state);
+    view_dispatcher_run(ctx->view_dispatcher);
+    
+    widget_free(ctx->widget);
+    view_dispatcher_free(ctx->view_dispatcher);
+    free(ctx);
     return 0;
 }
