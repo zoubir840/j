@@ -1,0 +1,28 @@
+name: "Compile Flipper Application"
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Permet de lancer la compilation manuellement
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build FAP with FBT Action
+        uses: flipperdevices/fbt-action@v1
+        with:
+          app-dir: subghz_advanced
+          # Tu peux spécifier la branche du firmware cible ici (ex: release, dev, ou un fork comme momentum)
+          sdk-channel: release 
+
+      - name: Upload Compiled FAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: subghz_advanced_fap
+          path: subghz_advanced/*.fap
